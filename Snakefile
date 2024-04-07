@@ -26,7 +26,7 @@ rule teToFam:
         config["DFAM"],
         "data/dfam_families.tsv"
     output:
-        "data/tes_{status}_fam.bed"
+        temp("data/tes_{status}_fam.bed")
     params:
         "{status}" # either full or partial
     shell:
@@ -40,46 +40,51 @@ rule createGenomeFile:
     shell:
         "python3 scripts/createGenomeFile.py {input} {output}"
 
-rule select_tes:
-    input:
-        "data/tes_{status}_fam.bed"
-    output:
-        "data/tes_{status}_fam_{te_type}.bed"
-    params:
-        "{te_type}"
-    shell:
-        "Rscript scripts/selectTEsByName.R {input} <(echo {params}) {output}"
+# rule select_tes:
+#     input:
+#         "data/tes_{status}_fam.bed"
+#     output:
+#         "data/tes_{status}_fam_{te_type}.bed"
+#     params:
+#         "{te_type}"
+#     shell:
+#         "Rscript scripts/selectTEsByName.R {input} <(echo {params}) {output}"
 
 rule getSequences:
     input:
-        bed = "data/tes_{status}_fam_{te_type}.bed",
+        bed = "data/tes_{status}_fam.bed",
         genome = config["GENOME"]
     output:
-        "data/seq_{status}.{te_type}.fa"
+        "data/seq_{status}.fa"
     shell:
         "bedtools getfasta -fi {input.genome} -bed {input.bed} -fo {output} -s"
 
 rule getPolyA:
     input:
-        "data/seq_{status}.{te_type}.fa"
+        "data/seq_{status}.fa"
     output:
-        "data/polyA_{status}.{te_type}.bed"
+        "data/polyA_{status}.bed"
     threads: max(workflow.cores / 2, 1)
     shell:
         "python3 scripts/annotate2.py {input} {output} {threads}"
 
+rule renamePolByTE:
+    input:
+        "data/polyA_{status}.bed"
+    output:
+        temp("data/polyA_{status}.renamed.bed")
+    shell:
+        "Rscript scripts/renamePolyA.R {input} {output}"
+
 rule getPosPolyA:
     input:
         aoe = config["AOE"],
-        polyA = "data/polyA_{status}.{te_type}.bed"
+        polyA = "data/polyA_{status}.bed"
     output:
-        "data/polyA_{status}.{te_type}.tsv"
-    params:
-        "{te_type}"
+        "data/polyA_{status}.tsv"
     shell:
         """
-        bin/countFeatures.bin +a {input.aoe} +b {input.polyA} +o {output} +m +i 1000000 +p start
-        sed -i "s/^/{params}\t/g" {output}
+        bin/countFeatures.bin +a {input.aoe} +b {input.polyA} +o {output} +m +i 1000000 +p start +d
         """
 
 rule collect_polyA:
