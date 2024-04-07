@@ -1,0 +1,46 @@
+DFAM: "data/DAsusScro11.1.nrph.hits"
+DFAM_CLASS: "data/dfam_te_classification.tsv"
+DFAM_LENGTH: "data/dfam_sus_tes.tsv"
+AOE: "data/barriersAOE_susScro.tsv"
+GENOME: "data/susScro.fa"
+ANC_GEN: "data/susScro_ancestralGenome.fasta"
+MUTATIONS: "data/susScro.filtered_ancestralBases.vcf"
+FAMS:
+- L1
+- tRNA
+- MIR
+- L2
+# - hAT-Charlie
+- ERVL-MaLR
+# - ERVL
+# - TcMar-Tigger
+# - hAT-Tip100
+# - ERV1
+# - CR1
+- Gypsy
+# - RTE-X
+# - hAT-Blackjack
+# - TcMar-Tc2
+# - TcMar-Mariner
+# - hAT
+# - tRNA-RTE
+# - snRNA
+# - RTE-BovB
+# - Helitron
+# - hAT-Ac
+# - hAT-Tag1
+# - rRNA
+# - 5S-Deu-L2
+# - TcMar-Tc1
+# - PiggyBac
+# - Dong-R4
+# - MULE-MuDR
+# - PIF-Harbinger
+# - Kolobok
+# - Crypton
+# - Merlin
+# - Crypton-A
+# - TcMar
+# - tRNA-Deu
+# - L1-Tx1
+# - tRNA-Deu-L2
