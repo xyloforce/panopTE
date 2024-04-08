@@ -70,7 +70,8 @@ rule getPolyA:
 
 rule renamePolByTE:
     input:
-        "data/polyA_{status}.bed"
+        "data/polyA_{status}.bed",
+        "data/tes_{status}_fam.bed"
     output:
         temp("data/polyA_{status}.renamed.bed")
     shell:
@@ -79,7 +80,7 @@ rule renamePolByTE:
 rule getPosPolyA:
     input:
         aoe = config["AOE"],
-        polyA = "data/polyA_{status}.bed"
+        polyA = "data/polyA_{status}.renamed.bed"
     output:
         "data/polyA_{status}.tsv"
     shell:
@@ -87,85 +88,78 @@ rule getPosPolyA:
         bin/countFeatures.bin +a {input.aoe} +b {input.polyA} +o {output} +m +i 1000000 +p start +d
         """
 
-rule collect_polyA:
+# rule collect_polyA:
+#     input:
+#         expand("data/polyA_{{status}}.{te_type}.tsv", te_type = config["FAMS"])
+#     output:
+#         "data/polyA_{status}.tsv"
+#     shell:
+#         "cat {input} > {output}"
+rule changeID:
     input:
-        expand("data/polyA_{{status}}.{te_type}.tsv", te_type = config["FAMS"])
+        "data/tes_{status}_fam.bed"
     output:
-        "data/polyA_{status}.tsv"
+        temp("data/tes_{status}_fam_uniqID.bed")
     shell:
-        "cat {input} > {output}"
+        "Rscript scripts/createBedtoolsID.R {input} {output}"
 
 rule getPosCopySpecific:
     input:
         aoe = config["AOE"],
-        tes = "data/tes_{status}_fam_{te_type}.bed"
+        tes = "data/tes_{status}_fam_uniqID.bed"
     output:
-        "data/cpy_pos_{status}.{te_type}.tsv"
+        "data/cpy_pos_{status}.tsv"
     shell:
         "bin/countFeatures.bin +a {input.aoe} +b {input.tes} +o {output} +m +i 1000000 +p stop +s +d"
 
 rule getPosTESpecific:
     input:
         aoe = config["AOE"],
-        tes = "data/tes_{status}_fam_{te_type}.bed"
-    output:
-        "data/pos_{status}.{te_type}.tsv"
-    params:
-        "{te_type}"
-    shell:
-        """
-        bin/countFeatures.bin +a {input.aoe} +b {input.tes} +o {output} +m +i 1000000 +p stop +s
-        sed -i "s/$/\t{params}/g" {output}
-        """ # final output is pos val type
-
-rule collect_pos:
-    input:
-        expand("data/pos_{{status}}.{te_type}.tsv", te_type = config["FAMS"])
+        tes = "data/tes_{status}_fam.bed"
     output:
         "data/pos_{status}.tsv"
     shell:
-        "cat {input} > {output}"
+        """
+        bin/countFeatures.bin +a {input.aoe} +b {input.tes} +o {output} +m +i 1000000 +p stop +s +d
+        """ # final output is pos val type
 
 rule selectTEbyPos:
     input:
-        polyA = "data/cpy_pos_{status}.{te_type}.tsv",
-        te = "data/tes_{status}_fam_{te_type}.bed"
+        polyA = "data/cpy_pos_{status}.tsv",
+        tes = "data/tes_{status}_fam.bed"
     output:
-        "data/first_pos_{status}.{te_type}.bed"
+        "data/first_pos_{status}.bed"
     shell:
-        "Rscript scripts/selectAlusByPos.R {input.polyA} {input.te} {output} -50 50"
-
-rule maskGenome:
-    input:
-        genome = "data/genome.genome",
-        fasta = config["ANC_GEN"],
-        tes = "data/first_pos_{status}.{te_type}.bed"
-    output:
-        "data/only_{status}.{te_type}_genome.fa"
-    shell:
-        """
-        bedtools sort -i {input.tes} | bedtools complement -i - -g {input.genome}  | bedtools maskfasta -fi {input.fasta} -fo {output} -bed -
-        """
+        "Rscript scripts/selectAlusByPos.R {input.polyA} {input.tes} {output} -50 50"
 
 rule getNCpG:
     input:
-        "data/only_{status}.{te_type}_genome.fa"
+        config["ANC_GEN"]
     output:
-        CpG = "data/CpG.{status}.{te_type}.bed",
-        nCpG = "data/nCpG.{status}.{te_type}.bed"
+        CpG = "data/CpG.bed",
+        nCpG = "data/nCpG.bed"
     shadow: "shallow"
     shell:
         "bin/getPattern.bin +f {input} +1 {output.CpG} +2 {output.nCpG} +p CG"
 
+rule preIntersect:
+    input:
+        tes = "data/first_pos_{status}.bed",
+        mask = "data/nCpG.bed"
+    output:
+        "data/nCG_{status}.bed"
+    shell:
+        "bin/intersectKeepingNames.bin +a {input.tes} +b {input.mask} +o {output}"
+
 rule count_bases:
     input:
         aoe = config["AOE"],
-        genome = "data/only_{status}.{te_type}_genome.fa",
-        mask = "data/{mask}.{status}.{te_type}.bed"
+        genome = config["ANC_GEN"],
+        mask = "data/nCG_{status}.bed"
     output:
-        "data/bases_{mask}.{status}.{te_type}_first_pos.tsv"
+        "data/bases_{status}_first_pos.tsv"
     shell:
-        "bin/countBases.bin +f {input.genome} +a {input.aoe} +b {input.mask} +o {output}"
+        "bin/countBases.bin +f {input.genome} +a {input.aoe} +b {input.mask} +o {output} +i +m hit"
 
 rule getProfileGC:
     input:
