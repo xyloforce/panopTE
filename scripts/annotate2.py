@@ -6,7 +6,7 @@ header = ""
 total_entry = ""
 outputH = open(sys.argv[2], "w")
 
-def annotatePolyA(fasta_entry, window_size = 10, A_richness = 0.8):
+def annotatePolyA(fasta_entry, window_size = 10, A_richness = 0.7):
     seq = fasta_entry[1].upper()
     size = len(seq)
     subset = seq[size - window_size:]

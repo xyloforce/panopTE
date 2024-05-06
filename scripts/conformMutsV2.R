@@ -4,50 +4,30 @@ library(stringr)
 print("conforming muts...")
 args = commandArgs(trailingOnly = TRUE)
 
-bases = read.delim(args[1], header = FALSE,
-                   col.names = c("pos", "base", "strand", "count"))
+data = read.delim(args[1], header = FALSE,
+                   col.names = c("id", "pos", "mut", "count", "total"))
 
-bases = aggregate(bases$count, by = list(bases$pos, bases$base), FUN = sum)
-colnames(bases) = c("pos", "base", "count")
+final_df = lapply(unique(data$id), FUN = function(id) {
+    sub_df = lapply(unique(data$mut), function(mut) {
+        df = data.frame(pos = -50:300, id = id, mut = mut)
+        indexes = which(data$mut == mut & data$id == id)
+        df$count = data[indexes, ][match(df$pos, data[indexes, "pos"]), "count"]
+        df$total = data[indexes, ][match(df$pos, data[indexes, "pos"]), "total"]
+        df$count = rollapply(df$count, 10, sum, na.rm = TRUE, fill = "extend")
+        df$total = rollapply(df$total, 10, sum, na.rm = TRUE, fill = "extend")
+        df$rate = df$count / df$total
+        return(df[, c("pos", "id", "mut", "rate")])
+    })
+    sub_df = do.call(rbind, sub_df)
+})
+final_df = do.call(rbind, final_df)
 
-muts = read.delim(args[2], header = FALSE,
-                  col.names = c("pos", "muts", "strand", "count"))
-muts = aggregate(muts$count, by = list(muts$pos, muts$muts), FUN = sum)
-colnames(muts) = c("pos", "muts", "count")
+final_df[, c("base", "bdest")] =
+    str_split_fixed(final_df$mut, pattern = "_", n = 2)
 
-muts[, c("base", "bdest")] = str_split_fixed(muts$muts,
-                                                    pattern = "_", n = 2)
-
-for (base in unique(muts$base)) {
-    subset = bases[bases$base == base, ]
-    muts[muts$base == base, "total"] =
-        subset[match(muts[muts$base == base, "pos"], subset$pos), "count"]
-}
-
-muts = muts[, c("pos", "base", "bdest", "count", "total")]
-for (base in unique(muts$base)) {
-    for (bdest in unique(muts$bdest)) {
-        indexes = which(muts$base == base &
-                      muts$bdest == bdest)
-        if (length(indexes) > 10) {
-            muts[indexes, "sumC"] = rollapply(muts[indexes, "count"],
-                                          10, sum, na.rm = TRUE,
-                                          fill = "extend")
-            muts[indexes, "sumT"] = rollapply(muts[indexes, "total"],
-                                          10, sum, na.rm = TRUE,
-                                          fill = "extend")
-        } else {
-            muts[indexes, "sumC"] = sum(muts[indexes, "count"], na.rm = TRUE)
-            muts[indexes, "sumT"] = sum(muts[indexes, "total"], na.rm = TRUE)
-        }
-    }
-}
-
-muts$prob = muts$sumC / muts$sumT
-
-muts = muts[, c("pos", "base", "bdest", "prob")]
-write.table(muts,
-            file = args[3],
+final_df = final_df[, c("id", "pos", "base", "bdest", "rate")]
+write.table(final_df,
+            file = args[2],
             quote = FALSE,
             sep = "\t",
             row.names = FALSE)

@@ -1,123 +1,137 @@
-configfile: "config.yaml"
 wildcard_constraints:
-    te_type="[\w-]+",
-    status="[\w-]+"
+    status="full|partial|noTE",
+    context="nCpG|CpG"
+
+rule all:
+    input:
+        "results_{species}/equilibrium_gc_full.png",
+        "results_{species}/muts_nCpG_full.png",
+        "results_{species}/polyA_tes_full.png",
+        "results_{species}/gc_tes_full.png"
 
 rule repeatToBed:
     input:
         config["DFAM"]
     output:
-        tes = "data/tes_normal.bed"
+        tes = "data_{species}/tes_normal.bed"
     shell:
         "python3 scripts/convertDfamAnnotToBed.py {input} {output}"
+
+rule sort:
+    input:
+        "data_{species}/{anything}.bed"
+    output:
+        "data_{species}/{anything}_sorted.bed"
+    shell:
+        "bedtools sort -i {input} > {output}"
+
+rule complement:
+    input:
+        tes = "data_{species}/tes_normal_sorted.bed",
+        genome = "data_{species}/genome.genome"
+    output:
+        "data_{species}/tes_noTE_fam.bed"
+    shell:
+        """
+        bedtools complement -g {input.genome} -i {input.tes} > {output}
+        sed -i "s/$/\tnoTE\t.\t+/g" {output}
+        """
 
 rule getFamilies:
     input:
         config["DFAM_CLASS"],
         config["DFAM_LENGTH"]
     output:
-        "data/dfam_families.tsv"
+        "data_{species}/dfam_families.tsv"
     shell:
         "python3 scripts/createFamilyFile.py {input} {output}"
 
 rule teToFam:
     input:
-        "data/tes_normal.bed",
+        "data_{species}/tes_normal.bed",
         config["DFAM"],
-        "data/dfam_families.tsv"
+        "data_{species}/dfam_families.tsv"
     output:
-        temp("data/tes_{status}_fam.bed")
-    params:
-        "{status}" # either full or partial
+        temp("data_{species}/tes_{status}_fam.bed")
+    shadow: "shallow"
+    params: "{status}" # either full or partial
+    wildcard_constraints:
+        status="full|partial",
     shell:
-        "python3 scripts/tetypeToFam.py {input} {output} {params}"
+        """
+        python3 scripts/tetypeToFam.py {input} tmp.bed {params}
+        grep -Pv "\t\t" tmp.bed > {output}
+        """
 
 rule createGenomeFile:
     input:
         config["GENOME"]
     output:
-        "data/genome.genome"
+        "data_{species}/genome.genome"
     shell:
         "python3 scripts/createGenomeFile.py {input} {output}"
 
-# rule select_tes:
-#     input:
-#         "data/tes_{status}_fam.bed"
-#     output:
-#         "data/tes_{status}_fam_{te_type}.bed"
-#     params:
-#         "{te_type}"
-#     shell:
-#         "Rscript scripts/selectTEsByName.R {input} <(echo {params}) {output}"
-
 rule getSequences:
     input:
-        bed = "data/tes_{status}_fam.bed",
+        bed = "data_{species}/tes_{status}_fam.bed",
         genome = config["GENOME"]
     output:
-        "data/seq_{status}.fa"
+        "data_{species}/seq_{status}.fa"
     shell:
         "bedtools getfasta -fi {input.genome} -bed {input.bed} -fo {output} -s"
 
 rule getPolyA:
     input:
-        "data/seq_{status}.fa"
+        "data_{species}/seq_{status}.fa"
     output:
-        "data/polyA_{status}.bed"
-    threads: max(workflow.cores / 2, 1)
+        "data_{species}/polyA_{status}.bed"
+    threads: workflow.cores
     shell:
         "python3 scripts/annotate2.py {input} {output} {threads}"
 
 rule renamePolByTE:
     input:
-        "data/polyA_{status}.bed",
-        "data/tes_{status}_fam.bed"
+        "data_{species}/polyA_{status}.bed",
+        "data_{species}/tes_{status}_fam.bed"
     output:
-        temp("data/polyA_{status}.renamed.bed")
+        temp("data_{species}/polyA_{status}.renamed.bed")
     shell:
         "Rscript scripts/renamePolyA.R {input} {output}"
 
 rule getPosPolyA:
     input:
         aoe = config["AOE"],
-        polyA = "data/polyA_{status}.renamed.bed"
+        polyA = "data_{species}/polyA_{status}.renamed.bed"
     output:
-        "data/polyA_{status}.tsv"
+        "data_{species}/polyA_{status}.tsv"
     shell:
         """
         bin/countFeatures.bin +a {input.aoe} +b {input.polyA} +o {output} +m +i 1000000 +p start +d
         """
 
-# rule collect_polyA:
-#     input:
-#         expand("data/polyA_{{status}}.{te_type}.tsv", te_type = config["FAMS"])
-#     output:
-#         "data/polyA_{status}.tsv"
-#     shell:
-#         "cat {input} > {output}"
 rule changeID:
     input:
-        "data/tes_{status}_fam.bed"
+        "data_{species}/tes_{status}_fam.bed"
     output:
-        temp("data/tes_{status}_fam_uniqID.bed")
+        temp("data_{species}/tes_{status}_fam_uniqID.bed")
     shell:
         "Rscript scripts/createBedtoolsID.R {input} {output}"
 
 rule getPosCopySpecific:
     input:
         aoe = config["AOE"],
-        tes = "data/tes_{status}_fam_uniqID.bed"
+        tes = "data_{species}/tes_{status}_fam_uniqID.bed"
     output:
-        "data/cpy_pos_{status}.tsv"
+        "data_{species}/cpy_pos_{status}.tsv"
     shell:
         "bin/countFeatures.bin +a {input.aoe} +b {input.tes} +o {output} +m +i 1000000 +p stop +s +d"
 
 rule getPosTESpecific:
     input:
         aoe = config["AOE"],
-        tes = "data/tes_{status}_fam.bed"
+        tes = "data_{species}/tes_{status}_fam.bed"
     output:
-        "data/pos_{status}.tsv"
+        "data_{species}/pos_{status}.tsv"
     shell:
         """
         bin/countFeatures.bin +a {input.aoe} +b {input.tes} +o {output} +m +i 1000000 +p stop +s +d
@@ -125,10 +139,10 @@ rule getPosTESpecific:
 
 rule selectTEbyPos:
     input:
-        polyA = "data/cpy_pos_{status}.tsv",
-        tes = "data/tes_{status}_fam.bed"
+        polyA = "data_{species}/cpy_pos_{status}.tsv",
+        tes = "data_{species}/tes_{status}_fam.bed"
     output:
-        "data/first_pos_{status}.bed"
+        "data_{species}/first_pos_{status}.bed"
     shell:
         "Rscript scripts/selectAlusByPos.R {input.polyA} {input.tes} {output} -50 50"
 
@@ -136,18 +150,26 @@ rule getNCpG:
     input:
         config["ANC_GEN"]
     output:
-        CpG = "data/CpG.bed",
-        nCpG = "data/nCpG.bed"
+        CpG = "data_{species}/CpG.bed",
+        nCpG = "data_{species}/nCpG.bed"
     shadow: "shallow"
     shell:
         "bin/getPattern.bin +f {input} +1 {output.CpG} +2 {output.nCpG} +p CG"
 
+rule getRefCounts:
+    input:
+        config["AOE"]
+    output:
+        "data_{species}/ref_counts.tsv"
+    shell:
+        "bin/countFeatures.bin +a {input} +b {input} +o {output}"
+
 rule preIntersect:
     input:
-        tes = "data/first_pos_{status}.bed",
-        mask = "data/nCpG.bed"
+        tes = "data_{species}/first_pos_{status}.bed",
+        mask = "data_{species}/{context}.bed"
     output:
-        "data/nCG_{status}.bed"
+        "data_{species}/{context}_{status}.bed"
     shell:
         "bin/intersectKeepingNames.bin +a {input.tes} +b {input.mask} +o {output}"
 
@@ -155,110 +177,109 @@ rule count_bases:
     input:
         aoe = config["AOE"],
         genome = config["ANC_GEN"],
-        mask = "data/nCG_{status}.bed"
+        mask = "data_{species}/{context}_{status}.bed"
     output:
-        "data/bases_{status}_first_pos.tsv"
+        "data_{species}/bases_{context}_{status}_first_pos.tsv"
+    shell:
+        "bin/countBases.bin +f {input.genome} +a {input.aoe} +b {input.mask} +o {output} +i +m hit"
+
+rule count_bases_full:
+    input:
+        aoe = config["AOE"],
+        genome = config["ANC_GEN"],
+        mask = "data_{species}/first_pos_{status}.bed"
+    output:
+        "data_{species}/bases_{status}_first_pos.tsv"
     shell:
         "bin/countBases.bin +f {input.genome} +a {input.aoe} +b {input.mask} +o {output} +i +m hit"
 
 rule getProfileGC:
     input:
-        "data/bases_nCpG.{status}.{te_type}_first_pos.tsv"
+        "data_{species}/bases_{status}_first_pos.tsv"
     output:
-        "data/gc_{status}.{te_type}.tsv"
-    params:
-        "{te_type}"
+        "data_{species}/gc_{status}.tsv"
     shell:
-        """
-        Rscript scripts/getRealGCFromCounts.R {input} {output}
-        sed -i "s/$/\t{params}/g" {output}
-        """
-
-rule collect_gc:
-    input:
-        expand("data/gc_{{status}}.{te_type}.tsv", te_type = config["FAMS"])
-    output:
-        "data/gc_{status}.tsv"
-    shell:
-        "cat {input} > {output}"
+        "Rscript scripts/getGCFromCountPerID.R {input} {output}"
 
 rule count_mutations:
     input:
         aoe = config["AOE"],
         muts = config["MUTATIONS"],
-        mask = "data/{mask}.{status}.{te_type}.bed"
+        mask = "data_{species}/{context}_{status}.bed"
     output:
-        "data/muts_{mask}.{status}.{te_type}_first_pos.tsv"
+        "data_{species}/muts_{context}_{status}_first_pos.tsv"
     shell:
-        "bin/countMuts.bin +v {input.muts} +a {input.aoe} +b {input.mask} +o {output}"
+        "bin/countMuts.bin +v {input.muts} +a {input.aoe} +b {input.mask} +o {output} +j +m hit"
 
 rule getRate:
     input:
-        "data/bases_{mask}.{status}.{te_type}_first_pos.tsv",
-        "data/muts_{mask}.{status}.{te_type}_first_pos.tsv"
+        "data_{species}/bases_{context}_{status}_first_pos.tsv",
+        "data_{species}/muts_{context}_{status}_first_pos.tsv"
     output:
-        "data/rates_{mask}.{status}.{te_type}_first_pos.tsv"
-    params:
-        "{te_type}"
+        "data_{species}/rates_{context}_{status}_first_pos.tsv"
     shell:
         """
         Rscript scripts/rateSW.R {input} {output}
-        sed -i "s/^/{params}\t/g" {output}
         """
 
 rule gillespiage:
     input:
-        CpG_bases = "data/bases_CpG.{status}.{te_type}_first_pos.tsv",
-        CpG_muts = "data/muts_CpG.{status}.{te_type}_first_pos.tsv",
-        nCpG_bases = "data/bases_nCpG.{status}.{te_type}_first_pos.tsv",
-        nCpG_muts = "data/muts_nCpG.{status}.{te_type}_first_pos.tsv"
+        CpG_rates = "data_{species}/rates_CpG_{status}_first_pos.tsv",
+        nCpG_rates = "data_{species}/rates_nCpG_{status}_first_pos.tsv"
     output:
-        "data/equilibrium_{status}.{te_type}.tsv"
+        "data_{species}/equilibrium_{status}.tsv"
     shadow: "shallow"
-    threads: workflow.cores  / 2
-    params:
-        "{te_type}"
+    threads: workflow.cores
     shell:
         """
-        Rscript scripts/conformMutsV2.R {input.CpG_bases} {input.CpG_muts} muts_CpG.tsv
-        Rscript scripts/conformMutsV2.R {input.nCpG_bases} {input.nCpG_muts} muts_nCpG.tsv
+        Rscript scripts/conformMutsV2.R {input.CpG_rates} muts_CpG.tsv
+        Rscript scripts/conformMutsV2.R {input.nCpG_rates} muts_nCpG.tsv
         Rscript scripts/simplGillespie.R muts_nCpG.tsv muts_CpG.tsv {output} {threads}
-        sed -i "s/^/{params}\t/g" {output}
         """
 
-rule collect_gillespie:
+rule plotPos:
     input:
-        expand("data/equilibrium_{{status}}.{te_type}.tsv", te_type = config["FAMS"])
+        "data_{species}/pos_{status}.tsv",
+        "data_{species}/ref_counts.tsv"
     output:
-        "data/equilibrium_{status}.tsv"
+        "results_{species}/pos_{status}_by_fam.png",
+        "results_{species}/pos_{status}_savestate.csv"
     shell:
-        "cat {input} > {output}"
+        "Rscript scripts/plotPos.R {input} {output}"
 
-rule collect_muts:
+rule plotPolyA:
     input:
-        expand("data/rates_nCpG.{{status}}.{te_type}_first_pos.tsv", te_type = config["FAMS"])
+        "data_{species}/polyA_{status}.tsv",
+        "data_{species}/ref_counts.tsv"
     output:
-        "data/muts_{status}.tsv"
+        "results_{species}/polyA_tes_{status}.png",
+        "results_{species}/polyA_{status}_savestate.csv"
     shell:
-        "cat {input} > {output}"
+        "Rscript scripts/plotPolyA.R {input} {output}"
 
-rule plot:
+rule plotGC:
     input:
-        "data/gc_{status}.tsv",
-        "data/polyA_{status}.tsv",
-        "data/muts_{status}.tsv",
-        "data/equilibrium_{status}.tsv"
+        "data_{species}/gc_{status}.tsv"
     output:
-        "results/gc_tes_{status}.svg",
-        "results/polyA_tes_{status}.svg",
-        "results/muts_tes_{status}.svg",
-        "results/equilibrium_gc_{status}.svg"
+        "results_{species}/gc_tes_{status}.png",
+        "results_{species}/gc_{status}_savestate.csv"
     shell:
-        "Rscript scripts/plot_all.R {input} {output}"
-
-rule plot_all:
+        "Rscript scripts/plotGC.R {input} {output}"
+        
+rule plotMuts:
     input:
-        "results/equilibrium_gc_full.svg",
-        "results/equilibrium_gc_partial.svg"
+        "data_{species}/rates_{context}_{status}_first_pos.tsv"
     output:
-        touch("done")
+        "results_{species}/muts_{context}_{status}.png",
+        "results_{species}/muts_{context}_{status}_savestate.csv"
+    shell:
+        "Rscript scripts/plotMuts.R {input} {output}"
+
+rule plotEquilibrium:
+    input:
+        "data_{species}/equilibrium_{status}.tsv"
+    output:
+        "results_{species}/equilibrium_gc_{status}.png",
+        "results_{species}/equilibrium_{status}_savestate.csv"
+    shell:
+        "Rscript scripts/plotEquilibrium.R {input} {output}"
