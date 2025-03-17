@@ -23,6 +23,11 @@ gc_content = 10
 offset = 50 # offset applied to be able to see mutation rates inside
 len_seqs = 350
 
+if(length(args) > 4) {
+    offset = as.numeric(args[5])
+    len_seqs = as.numeric(args[6])
+}
+
 print("read files")
 whole_muts_nCpG = read.delim(args[1])
 whole_muts_CpG = read.delim(args[2])

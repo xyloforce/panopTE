@@ -17,14 +17,18 @@ for i in range(0,30): # skip first header lines
 
 for line in te_species:
     line = line.strip().split()
-    length = re.findall("len=(\d+)", line[3])[0]
+    length = re.findall("len=(\d+)", line[-1])[0] # formerly 3
     family = line[2]
     try:
         element_name = re.findall("'([\.\w-]+)'", line[1])[0]
     except IndexError:
         print(line[1])
         raise IndexError
-    rm_type = fam_to_equivalents[family][4]
+    try:
+        rm_type = fam_to_equivalents[family][4]
+    except KeyError:
+        print(line)
+        raise KeyError
     count = fam_to_equivalents[family][3]
     try:
         rm_subtype = fam_to_equivalents[family][5]

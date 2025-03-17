@@ -1,5 +1,5 @@
 wildcard_constraints:
-    status="full|partial|noTE",
+    status="normal|noTE|shuffle",
     context="nCpG|CpG"
 
 rule all:
@@ -48,15 +48,15 @@ rule getFamilies:
 
 rule teToFam:
     input:
-        "data_{species}/tes_normal.bed",
+        "data_{species}/tes_{status}.bed",
         config["DFAM"],
         "data_{species}/dfam_families.tsv"
     output:
         temp("data_{species}/tes_{status}_fam.bed")
     shadow: "shallow"
     params: "{status}" # either full or partial
-    wildcard_constraints:
-        status="full|partial",
+    # wildcard_constraints:
+    #     status="full|partial",
     shell:
         """
         python3 scripts/tetypeToFam.py {input} tmp.bed {params}
@@ -70,6 +70,33 @@ rule createGenomeFile:
         "data_{species}/genome.genome"
     shell:
         "python3 scripts/createGenomeFile.py {input} {output}"
+
+rule shuffleRepeat:
+    input:
+        tes = "data_{species}/tes_normal.bed",
+        genome = "data_{species}/genome.genome"
+    output:
+        "data_{species}/tes_shuffle.bed"
+    shell:
+        "bedtools shuffle -i {input.tes} -g {input.genome} > {output}"
+
+rule NIEBxTE:
+    input:
+        tes = "data_{species}/tes_{status}_fam.bed",
+        nieb = config["NIEB"]
+    output:
+        temp("data_{species}/niebs_x_tes_{status}.tsv")
+    shell:
+        "bedtools intersect -wa	-a {input.tes} -b {input.nieb} > {output}"
+
+rule aggNIEBsPTE:
+    input:
+        "data_{species}/niebs_x_tes_normal.tsv",
+        "data_{species}/niebs_x_tes_shuffle.tsv"
+    output:
+        "data_{species}/merge_tes_to_niebs.csv"
+    shell:
+        "Rscript scripts/mergeIntersects.R {input} {output}"
 
 rule getSequences:
     input:
