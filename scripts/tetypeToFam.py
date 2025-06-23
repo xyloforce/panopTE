@@ -7,28 +7,46 @@ if len(sys.argv) > 5:
     else:
         pass
 
+species = ""
+if len(sys.argv) > 6:
+    species = sys.argv[6].replace("_", " ")
+
 te_to_fam = dict()
-for line in open(sys.argv[3]):
+for line in open(sys.argv[2]):
     line = line.strip().split("\t")
-    te_to_fam[line[0]] = (line[2], line[3])
+    # print(line)
+    te_to_fam[line[0]] = (line[1], line[3])
+    # create dict of TE type : fam, average_size
 
 output_content = list()
 bed_file = open(sys.argv[1]).readlines()
-hit_file = open(sys.argv[2]).readlines()
-for line, line_fam in zip(bed_file, hit_file[1:]): # skip first line of hitfile as its only headers
-    line = line.split("\t")
-    if full:
-        line_fam = line_fam.split("\t")
-        model_end = int(line_fam[7])
-        fam_len = int(te_to_fam[line[3]][1])
-        min_f = fam_len - (0.2 * fam_len)
-        max_f = fam_len + (0.1 * fam_len)
-        if min_f > model_end:
+if full:
+    repbase_dict = dict()
+    for line in open(sys.argv[3]):
+        line = line.strip().split("\t")
+        if len(line) > 2:
+            if line[2] == species:
+                repbase_dict[line[0]] = line[-1]
+
+    for line in bed_file:
+        line = line.strip().split("\t")
+        interval_size = int(line[2]) - int(line[1])
+        try:
+            ref_length = int(repbase_dict[line[3]])
+        except KeyError:
+            ref_length = float(te_to_fam[line[3]][-1]) # check against average size (bad but hey)
+        interval_length = (ref_length - (0.1 * ref_length),
+                           ref_length + (0.1 * ref_length))
+        if (interval_size > interval_length[0]) & \
+           (interval_size < interval_length[1]):
             line[3] = te_to_fam[line[3]][0]
-            output_content.append("\t".join(line))
-    else:
+            output_content.append("\t".join(line) + "\n")
+
+else:
+    for line in bed_file:
+        line = line.strip().split("\t")
         line[3] = te_to_fam[line[3]][0]
-        output_content.append("\t".join(line))
+        output_content.append("\t".join(line) + "\n")
 
 output = open(sys.argv[4], "w")
 output.writelines(output_content)
