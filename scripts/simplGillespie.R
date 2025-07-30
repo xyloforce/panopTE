@@ -23,9 +23,9 @@ gc_content = 10
 offset = 50 # offset applied to be able to see mutation rates inside
 len_seqs = 350
 
-if(length(args) > 4) {
-    offset = as.numeric(args[5])
-    len_seqs = as.numeric(args[6])
+if (length(args) > 4) {
+  offset = as.numeric(args[5])
+  len_seqs = as.numeric(args[6])
 }
 
 print("read files")
@@ -73,6 +73,8 @@ final_results = lapply(unique(whole_muts_nCpG$id), FUN = function(id) {
         profile$mean = as.numeric(mean10pb(profile$gc_content))
         profile$id = id
         profile = profile[, c("id", "position", "mean")]
+    } else {
+        print("not enough mutations to run")
     }
     return(profile)
 })

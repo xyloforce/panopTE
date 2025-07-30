@@ -9,7 +9,9 @@ data = read.delim(args[1], header = FALSE,
 
 final_df = lapply(unique(data$id), FUN = function(id) {
     sub_df = lapply(unique(data$mut), function(mut) {
-        df = data.frame(pos = -50:300, id = id, mut = mut)
+        min_data = min(data$pos)
+        max_data = max(data$pos)
+        df = data.frame(pos = min_data:max_data, id = id, mut = mut)
         indexes = which(data$mut == mut & data$id == id)
         df$count = data[indexes, ][match(df$pos, data[indexes, "pos"]), "count"]
         df$total = data[indexes, ][match(df$pos, data[indexes, "pos"]), "total"]

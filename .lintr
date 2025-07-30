@@ -1,4 +1,3 @@
 linters: linters_with_defaults(
-    assignment_linter = NULL,
-    indentation_linter = NULL) # see vignette("lintr")
+    assignment_linter = NULL) # see vignette("lintr")
 encoding: "UTF-8"

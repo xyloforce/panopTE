@@ -1,47 +1,32 @@
 library(stringr)
 
 source("~/setThemePoster.R")
-args = commandArgs(trailingOnly=TRUE)
+args = commandArgs(trailingOnly = TRUE)
 
+print("Loading dataset")
 data = read.delim(args[1],
                   header = FALSE,
                   col.names = c("id", "pos", "base", "strand", "count"))
 
-data = aggregate(data$count, by = list("id" = data$id,
-                                       "pos" = data$pos,
-                                       "base" = data$base,
-                                       "strand" = data$strand),
-                             FUN = sum)
-colnames(data) = c("id", "pos", "base", "strand", "count")
-# data = read.delim(args[1])
-data = data[data$pos < 500, ]
-data = data[data$base != "N", ]
+data$type = "nGC"
+data[data$base == "S", "type"] = "GC"
+data = data[, c("id", "pos", "strand", "type", "count")] # reorder cols
 
-## first aggregate to delete strand
-
-data = aggregate(data$count, by = list(data$id, data$pos, data$base), FUN = sum)
-colnames(data) = c("id", "pos", "base", "count")
-
-## then aggregate to group GC and non GC
-
-data$GC = "nGC"
-data[data$base %in% c("G", "C"), "GC"] = "GC"
-data = aggregate(data$count, by = list(data$id, data$pos, data$GC), FUN = sum)
-colnames(data) = c("id", "pos", "type", "count")
-
-## then divide GC by sum GC + nGC
-# gc = data[data$type == "GC",]
-# ngc = data[data$type == "nGC",]
+print("Reshaping datafame")
 data_gc = reshape(data = data,
-                  idvar  = c("id", "pos"),
+                  idvar  = c("id", "pos", "strand"),
                   v.names = "count",
                   timevar = "type",
                   direction = "wide")
-colnames(data_gc) = c("id", "pos", "count_gc", "count_ngc")
+# colnames(data_gc) = c("id", "pos", "strand", "count_ngc", "count_gc")
+colnames(data_gc)[colnames(data_gc) == "count.GC"] = "count_gc"
+colnames(data_gc)[colnames(data_gc) == "count.nGC"] = "count_ngc"
+
 data_gc$total = rowSums(data_gc[, c("count_gc", "count_ngc")], na.rm = TRUE)
 data_gc$rate = data_gc$count_gc / data_gc$total
 
-data_gc = data_gc[, c("id", "pos", "rate", "count_gc", "total")]
+print("Writing dataframe")
+data_gc = data_gc[, c("id", "pos", "strand", "rate", "count_gc", "total")]
 write.table(data_gc, args[2], row.names = FALSE,
             col.names = FALSE, sep = "\t",
             quote = FALSE)
