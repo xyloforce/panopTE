@@ -8,12 +8,41 @@ set.seed(1123)
 source("~/second_home/scripts/functions.R")
 source("~/setThemePoster.R")
 
-safeFixDf = function(muts, offset, total_len) {
-    tryCatch({
-        suppressWarnings(fix_df(muts, offset, total_len))
-    }, error = function(err){
-        return(data.frame())
-    })
+checkDf = function(df, CpG = FALSE) {
+  source_bases = c("G", "C")
+  if(!CpG) {
+    source_bases = c(source_bases, "A", "T")
+  }
+  dest_bases = c("A", "T", "C", "G")
+  for (source in source_bases) {
+    for (dest in dest_bases) {
+      if (source != dest) {
+        if (nrow(df[df$base == source &
+                    df$bdest == dest, ]) == 0) {
+          print(paste("no muts for", source, dest))
+          stop("error !")
+        }
+        if (mean(df[df$base == source &
+                    df$bdest == dest, "prob"],
+                 na.rm = TRUE) == 0) {
+          print(paste("rate non defined for", source, dest))
+          stop("error !")
+        }
+      }
+    }
+  }
+  return(df)
+}
+
+safeFixDf = function(muts, offset, total_len, id, CpG = FALSE) {
+  tryCatch({
+    muts = suppressWarnings(fix_df(muts, offset, total_len, id))
+    muts = checkDf(muts, CpG)
+    return(muts)
+  }, error = function(err) {
+    return(data.frame())
+  })
+
 }
 
 registerDoParallel(cores = as.numeric(args[4]))
@@ -37,46 +66,49 @@ colnames(whole_muts_nCpG) = c("id", "pos", "base", "bdest", "prob")
 
 print("working on tes...")
 final_results = lapply(unique(whole_muts_nCpG$id), FUN = function(id) {
-    profile = data.frame()
-    print(paste0("id : ", id))
-    muts_nCpG = whole_muts_nCpG[whole_muts_nCpG$id == id, ]
-    muts_CpG = whole_muts_CpG[whole_muts_CpG$id == id, ]
-    muts_nCpG = safeFixDf(muts_nCpG, -offset, len_seqs - offset)
-    muts_CpG = safeFixDf(muts_CpG, -offset, len_seqs - offset)
+  profile = data.frame()
+  print(paste0("id : ", id))
+  muts_nCpG = whole_muts_nCpG[whole_muts_nCpG$id == id, ]
+  muts_CpG = whole_muts_CpG[whole_muts_CpG$id == id, ]
+  muts_nCpG = safeFixDf(muts_nCpG, -offset, len_seqs - offset, id, FALSE)
+  muts_CpG = safeFixDf(muts_CpG, -offset, len_seqs - offset, id, TRUE)
 
-    if (nrow(muts_CpG) > 0 && nrow(muts_nCpG) > 0) {
-        seqs = list()
-        for (i in 1:number_seqs) {
-            seqs[[i]] = define_seq(len = len_seqs, GC = gc_content)
-        }
-
-        gc_as_time = data.frame(time = c(), gc_content = c(), seq = c())
-        print("simulating...")
-        result = foreach(i = seq_len(length(seqs))) %dopar% {
-            mutate_seq_2(seqs[[i]], number_gens, muts_nCpG, muts_CpG, offset)
-        } # i is gc : seq : i
-
-        for (df in lapply(seq_len(length(result)), FUN = function(x) {
-            tmp = result[[x]][[2]]
-            tmp$seq = x
-            return(tmp)
-        })) {
-            gc_as_time = rbind(gc_as_time, df)
-        }
-        seqs = lapply(result, FUN = function(x) {
-            return(x[[1]])
-        })
-
-        cat("\n")
-
-        profile = get_gc_by_pos(seqs)
-        profile$mean = as.numeric(mean10pb(profile$gc_content))
-        profile$id = id
-        profile = profile[, c("id", "position", "mean")]
-    } else {
-        print("not enough mutations to run")
+  if (nrow(muts_CpG) > 0 && nrow(muts_nCpG) > 0) {
+    seqs = list()
+    for (i in 1:number_seqs) {
+      seqs[[i]] = define_seq(len = len_seqs, GC = gc_content)
     }
-    return(profile)
+
+    gc_as_time = data.frame(time = c(), gc_content = c(), seq = c())
+    print("simulating...")
+    result = foreach(i = seq_len(length(seqs))) %dopar%  {
+      mutate_seq_2(seqs[[i]], number_gens, muts_nCpG, muts_CpG, offset)
+    } # i is gc : seq : i
+    # result = lapply(seq_len(length(seqs)), function(i) { # 
+    #   mutate_seq_2(seqs[[i]], number_gens, muts_nCpG, muts_CpG, offset)
+    # }) # i is gc : seq : i
+
+    for (df in lapply(seq_len(length(result)), FUN = function(x) {
+      tmp = result[[x]][[2]]
+      tmp$seq = x
+      return(tmp)
+    })) {
+      gc_as_time = rbind(gc_as_time, df)
+    }
+    seqs = lapply(result, FUN = function(x) {
+      return(x[[1]])
+    })
+
+    cat("\n")
+
+    profile = get_gc_by_pos(seqs)
+    profile$mean = as.numeric(mean10pb(profile$gc_content))
+    profile$id = id
+    profile = profile[, c("id", "position", "mean")]
+  } else {
+    print("not enough mutations to run")
+  }
+  return(profile)
 })
 
 print("saving results...")

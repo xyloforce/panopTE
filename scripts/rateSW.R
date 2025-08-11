@@ -9,17 +9,17 @@ muts = read.delim(args[2], header = FALSE,
 
 muts[, c("ancestral", "current")] = str_split_fixed(muts$muts,
                                                     pattern = "_", n = 2)
-reverseBase = function(bases) {
-    tmp = bases
-    tmp[grep("A", bases)] = "T"
-    tmp[grep("T", bases)] = "A"
-    tmp[grep("G", bases)] = "C"
-    tmp[grep("C", bases)] = "G"
-    return(tmp)
-}
+# reverseBase = function(bases) {
+#     tmp = bases
+#     tmp[grep("A", bases)] = "T"
+#     tmp[grep("T", bases)] = "A"
+#     tmp[grep("G", bases)] = "C"
+#     tmp[grep("C", bases)] = "G"
+#     return(tmp)
+# }
 
-muts[muts$strand == "-", "ancestral"] = reverseBase(muts[muts$strand == "-", "ancestral"])
-muts[muts$strand == "-", "current"] = reverseBase(muts[muts$strand == "-", "current"])
+# muts[muts$strand == "-", "ancestral"] = reverseBase(muts[muts$strand == "-", "ancestral"])
+# muts[muts$strand == "-", "current"] = reverseBase(muts[muts$strand == "-", "current"])
 
 bases = aggregate(bases$count, by = list(bases$id, bases$pos, bases$base), FUN = sum)
 colnames(bases) = c("id", "pos", "base", "count")

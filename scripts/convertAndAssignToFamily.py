@@ -27,7 +27,7 @@ for line in inputHandler:
     if line[9] == "C":  # strand is in 9th position
         line[9] = "-"
 
-    # seqname / start / end / 
+    # seqname / start / end /
     line = [line[5], line[6], line[7], line[10], line[1], line[9]]
     file_content.append(line)
 

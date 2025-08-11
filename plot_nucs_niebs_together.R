@@ -36,14 +36,17 @@ data = rbind(tmp_nucs[, c("species", "te_name", "type", "pos", "rel")],
 # data = rbind(data1, data2, data3, data4)
 data$species = factor(data$species, levels = c("hg", "pig", "mus", "danio"))
 
-plot = ggplot(data = data[data$te_name == "L1" & data$pos %in% - 6000:50, ], aes(x = pos, y = rel, color = type)) + facet_grid(rows = vars(species), labeller = labeller(species = c("hg" = "H. sapiens", "mus" = "M. musculus", "pig" = "S. scrofa", "danio" = "D. rerio"))) + geom_point() + theme_poster + xlab("Position from the TE border") + ylab("Relative coverage") + labs(color = "Type")
-ggsave("plot_nuc_L1.png", width = 15, height = 5)
+plot = ggplot(data = data[data$te_name == "L1" & data$pos %in% - 6000:100 & data$species == "hg", ], aes(x = pos, y = rel, color = type)) + facet_grid(rows = vars(species), labeller = labeller(species = c("hg" = "H. sapiens", "mus" = "M. musculus", "pig" = "S. scrofa", "danio" = "D. rerio"))) + geom_point() + theme_poster + xlab("Position from the TE border") + ylab("Relative coverage") + labs(color = "Type")
+ggsave("plot_nuc_L1_hg.png", width = 15, height = 5)
 
-plot = ggplot(data = data[(data$te_name == "Alu" | data$te_name == "tRNA") & data$pos %in% - 300:50, ], aes(x = pos, y = rel, color = type)) + facet_grid(rows = vars(species), labeller = labeller(species = c("hg" = "H. sapiens", "mus" = "M. musculus", "pig" = "S. scrofa", "danio" = "D. rerio"))) + geom_point() + theme_poster + xlab("Position from the TE border") + ylab("Relative coverage") + labs(color = "Type")
+plot = ggplot(data = data[data$te_name == "L1" & data$pos %in% - 1000:100 & data$species %in% c("pig", "mus"), ], aes(x = pos, y = rel, color = type)) + facet_grid(rows = vars(species), labeller = labeller(species = c("hg" = "H. sapiens", "mus" = "M. musculus", "pig" = "S. scrofa", "danio" = "D. rerio"))) + geom_point() + theme_poster + xlab("Position from the TE border") + ylab("Relative coverage") + labs(color = "Type")
+ggsave("plot_nuc_L1_ms.png", width = 15, height = 5)
+
+plot = ggplot(data = data[(data$te_name == "Alu" | data$te_name == "tRNA") & data$pos %in% - 300:100, ], aes(x = pos, y = rel, color = type)) + facet_grid(rows = vars(species), labeller = labeller(species = c("hg" = "H. sapiens", "mus" = "M. musculus", "pig" = "S. scrofa", "danio" = "D. rerio"))) + geom_point() + theme_poster + xlab("Position from the TE border") + ylab("Relative coverage") + labs(color = "Type")
 ggsave("plot_nuc_Alu.png", width = 5, height = 5)
 
-plot = ggplot(data = data[(data$te_name == "hAT-Charlie") & data$pos %in% - 200:50, ], aes(x = pos, y = rel, color = type)) + facet_grid(rows = vars(species), labeller = labeller(species = c("hg" = "H. sapiens", "mus" = "M. musculus", "pig" = "S. scrofa", "danio" = "D. rerio"))) + geom_point() + theme_poster + xlab("Position from the TE border") + ylab("Relative coverage") + labs(color = "Type") + scale_y_log10()
+plot = ggplot(data = data[(data$te_name == "hAT-Charlie") & data$pos %in% - 200:100, ], aes(x = pos, y = rel, color = type)) + facet_grid(rows = vars(species), labeller = labeller(species = c("hg" = "H. sapiens", "mus" = "M. musculus", "pig" = "S. scrofa", "danio" = "D. rerio"))) + geom_point() + theme_poster + xlab("Position from the TE border") + ylab("Relative coverage") + labs(color = "Type") + scale_y_log10()
 ggsave("plot_nuc_DNA.png", width = 5, height = 5)
 
-plot = ggplot(data = data[(data$te_name == "ERV1") & data$pos %in% - 700:50, ], aes(x = pos, y = rel, color = type)) + facet_grid(rows = vars(species), labeller = labeller(species = c("hg" = "H. sapiens", "mus" = "M. musculus", "pig" = "S. scrofa", "danio" = "D. rerio"))) + geom_point() + theme_poster + xlab("Position from the TE border") + ylab("Relative coverage") + labs(color = "Type")
+plot = ggplot(data = data[(data$te_name == "ERV1") & data$pos %in% - 700:100, ], aes(x = pos, y = rel, color = type)) + facet_grid(rows = vars(species), labeller = labeller(species = c("hg" = "H. sapiens", "mus" = "M. musculus", "pig" = "S. scrofa", "danio" = "D. rerio"))) + geom_point() + theme_poster + xlab("Position from the TE border") + ylab("Relative coverage") + labs(color = "Type")
 ggsave("plot_nuc_ERV1.png", width = 10, height = 5)

@@ -141,34 +141,34 @@ rule getSequences:
     shell:
         "bedtools getfasta -fi {input.genome} -bed {input.bed} -fo {output} -s"
 
-# rule getPolyA:
-#     input:
-#         "data_{species}/seq.fa"
-#     output:
-#         "data_{species}/polyA.bed"
-#     threads: workflow.cores / 3
-#     shell:
-#         "python3 scripts/annotate2.py {input} {output} {threads}"
+rule getPolyA:
+    input:
+        "data_{species}/seq.fa"
+    output:
+        "data_{species}/polyA.bed"
+    threads: workflow.cores / 3
+    shell:
+        "python3 scripts/annotate2.py {input} {output} {threads}"
 
-# rule renamePolByTE:
-#     input:
-#         "data_{species}/polyA.bed",
-#         "data_{species}/tes_full_fam.bed"
-#     output:
-#         temp("data_{species}/polyA.renamed.bed")
-#     shell:
-#         "Rscript scripts/renamePolyA.R {input} {output}"
+rule renamePolByTE:
+    input:
+        "data_{species}/polyA.bed",
+        "data_{species}/tes_full_fam.bed"
+    output:
+        temp("data_{species}/polyA.renamed.bed")
+    shell:
+        "Rscript scripts/renamePolyA.R {input} {output}"
 
-# rule getPosPolyA:
-#     input:
-#         aoe = "data_{species}/niebs.aoe",
-#         polyA = "data_{species}/polyA.renamed.bed"
-#     output:
-#         "data_{species}/polyA.tsv"
-#     shell:
-#         """
-#         bin/countFeatures.bin +a {input.aoe} +b {input.polyA} +o {output} +m +i 1000000 +p start +d
-#         """
+rule getPosPolyA:
+    input:
+        aoe = "data_{species}/niebs.aoe",
+        polyA = "data_{species}/polyA.renamed.bed"
+    output:
+        "data_{species}/polyA.tsv"
+    shell:
+        """
+        bin/countFeatures.bin +a {input.aoe} +b {input.polyA} +o {output} +m +i 1000000 +p start +d +k hit +s
+        """
 
 rule getPosTESpecific:
     input:
@@ -187,28 +187,26 @@ rule getPosCopySpecific:
         tes = "data_{species}/tes_full_fam.bed"
     output:
         temp("data_{species}/pos_copy_specific_{intra}_{inter}.tsv")
+    shadow: "shallow"
     shell:
         """
         Rscript scripts/idToChrStartEnd.R {input.tes} tmp.tes.bed
         bin/countFeatures.bin +a {input.aoe} +b tmp.tes.bed +o {output} +d +k hit +s +p stop
         """
 
-rule selectNIEBs:
+rule selectTEs:
     input:
-        tes_copy = "data_{species}/pos_copy_specific_{intra}_{inter}.tsv",
-        niebs = "data_{species}/niebs.bed",
-        aoes = "data_{species}/{intra}_{inter}_niebs.aoe"
+        tes_copy = "data_{species}/pos_copy_specific_0_0.tsv",
+        tes_normal = "data_{species}/tes_full_fam.bed"
     output:
-        "data_{species}/first_pos_{intra}_{inter}.aoe"
+        "data_{species}/tes_fp_full_fam.bed"
     shadow: "shallow"
     shell:
         """
         echo start
         grep -P '\\-[1-50]\\t1' {input.tes_copy} | grep -P "\\-\\t\\+|\\+\\t\\-" | cut -f1 | sed -E 's/_/\\t/g' > tmp.copy.bed
         echo intersect
-        bedtools intersect -b tmp.copy.bed -a {input.niebs} -u > tmp.niebs.bed
-        echo last intersect
-        bedtools intersect -b tmp.niebs.bed -a {input.aoes} -wa > {output}
+        bedtools intersect -b tmp.copy.bed -a {input.tes_normal} -u > {output}
         """
 
 rule getNCpG:
@@ -243,20 +241,20 @@ rule plotPos:
 
 rule preIntersect:
     input:
-        tes = "data_{species}/tes_{aggstatus}.bed", # correct this later to use aggregated values at fam level?
+        tes = "data_{species}/tes_{posaggstatus}.bed",
         mask = "data_{species}/{context}.bed"
     output:
-       "data_{species}/preinter_{context}_{aggstatus}.bed"
+       "data_{species}/preinter_{context}_{posaggstatus}.bed"
     shell:
         "bin/intersectKeepingNames.bin +a {input.tes} +b {input.mask} +o {output}"
 
 rule count_bases:
     input:
-        aoe = "data_{species}/first_pos_{intra}_{inter}.aoe",
+        aoe = "data_{species}/{intra}_{inter}_niebs.aoe",
         genome = "data_{species}/anc_genome.fa",
-        mask = "data_{species}/preinter_{context}_{aggstatus}.bed"
+        mask = "data_{species}/preinter_{context}_fp_{aggstatus}.bed"
     output:
-        "data_{species}/bases_{context}_{aggstatus}_{intra}_{inter}.tsv"
+        "data_{species}/bases_{context}_fp_{aggstatus}_{intra}_{inter}.tsv"
     threads: min(workflow.cores, 5)
     shell:
         "bin/countBases.bin +f {input.genome} +a {input.aoe} +b {input.mask} +o {output} +i +m hit +t {threads}"
@@ -274,9 +272,9 @@ rule count_bases_tes:
 
 rule count_gc_niebs_full:
     input:
-        aoe = "data_{species}/first_pos_{intra}_{inter}.aoe",
+        aoe = "data_{species}/{intra}_{inter}_niebs.aoe",
         genome = "data_{species}/genome.fa",
-        mask = "data_{species}/tes_{aggstatus}.bed"
+        mask = "data_{species}/tes_fp_full_fam.bed"
     output:
         "data_{species}/bases_niebs_{aggstatus}_{intra}_{inter}.tsv"
     threads: min(workflow.cores, 5)
@@ -371,9 +369,9 @@ rule getProfileGC:
 
 rule count_mutations:
     input:
-        aoe = "data_{species}/first_pos_{intra}_{inter}.aoe",
+        aoe = "data_{species}/{intra}_{inter}_niebs.aoe",
         muts = "data_{species}/muts.vcf",
-        mask = "data_{species}/preinter_{context}_{aggstatus}.bed"
+        mask = "data_{species}/preinter_{context}_fp_{aggstatus}.bed"
     output:
         "data_{species}/muts_{context}_{aggstatus}_{intra}_{inter}.tsv"
     shell:
@@ -429,15 +427,15 @@ rule simplConform:
         Rscript scripts/conformMutsV2.R {input.nCpG_rates} {output.nCpG}
         """
 
-# rule plotPolyA:
-#     input:
-#         "data_{species}/polyA.tsv",
-#         "data_{species}/ref_counts.tsv"
-#     output:
-#         "results_{species}/polyA.png",
-#         "results_{species}/polyA_savestate.csv"
-#     shell:
-#         "Rscript scripts/plotPolyA.R {input} {output}"
+rule plotPolyA:
+    input:
+        "data_{species}/polyA.tsv",
+        "data_{species}/ref_counts.tsv"
+    output:
+        directory("results_{species}/polyA/"),
+        "results_{species}/polyA_savestate.csv"
+    shell:
+        "Rscript scripts/plotPolyA.R {input} {output}"
 
 rule plotGC:
     input:
