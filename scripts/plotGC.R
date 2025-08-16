@@ -8,12 +8,11 @@ source("~/setThemePoster.R")
 print("loading datasets")
 data = read.delim(args[1],
                   header = FALSE,
-                  col.names = c("fam", "pos", "strand",
-                                "rate", "count", "total"))
-data = aggregate(data[, c("count", "total")],
-                 by = list(data$fam, data$pos),
-                 FUN = sum)
-colnames(data) = c("fam", "pos", "count", "total")
+                  col.names = c("fam", "pos", "rate", "count", "total"))
+# data = aggregate(data[, c("count", "total")],
+#                  by = list(data$fam, data$pos),
+#                  FUN = sum)
+# colnames(data) = c("fam", "pos", "count", "total")
 
 window_size = 10
 if (length(args) > 4) {
@@ -29,25 +28,31 @@ head(data)
 # total_combinations = paste(data$fam, data$strand)
 final_data = lapply(unique(data$fam), function(fam) {
   subset = data[data$fam == fam, ]
-  min_sub = min(subset$pos)
-  max_sub = max(subset$pos)
-  tmp_df = data.frame(fam = fam,
-                      pos = min_sub:max_sub,
-                      count = 0,
-                      total = 0)
-  tmp_df[match(subset$pos, tmp_df$pos), "count"] = subset$count
-  tmp_df[match(subset$pos, tmp_df$pos), "total"] = subset$total
-  tmp_df$sumC = rollapply(tmp_df$count,
-                          window_size,
-                          sum,
-                          na.rm = TRUE,
-                          fill = NA)
-  tmp_df$sumT = rollapply(tmp_df$total,
-                          window_size,
-                          sum,
-                          na.rm = TRUE,
-                          fill = NA)
-  return(tmp_df)
+  subset = subset[subset$total > 10, ] # more than 10 total bases
+  if (nrow(subset) > 0) {
+    min_sub = min(subset$pos)
+    max_sub = max(subset$pos)
+    print(head(subset[is.na(subset$pos), ]))    
+    tmp_df = data.frame(fam = fam,
+                        pos = min_sub:max_sub,
+                        count = 0,
+                        total = 0)
+    tmp_df[match(subset$pos, tmp_df$pos), "count"] = subset$count
+    tmp_df[match(subset$pos, tmp_df$pos), "total"] = subset$total
+    tmp_df$sumC = rollapply(tmp_df$count,
+                            window_size,
+                            sum,
+                            na.rm = TRUE,
+                            fill = NA)
+    tmp_df$sumT = rollapply(tmp_df$total,
+                            window_size,
+                            sum,
+                            na.rm = TRUE,
+                            fill = NA)
+    return(tmp_df)
+  } else {
+    return(data.frame())
+  }
 })
 final_data = do.call(rbind, final_data)
 head(final_data)
@@ -76,7 +81,7 @@ if (!dir.exists(args[3])) {
 }
 
 
-for (fam in unique(data$fam)) {
+for (fam in unique(final_data$fam)) {
   print(fam)
   plot = ggplot(data = final_data[final_data$pos %in% -50:300 &
                                   final_data$fam == fam, ],
@@ -85,8 +90,9 @@ for (fam in unique(data$fam)) {
   geom_vline(xintercept = c(0, 133, 266)) +
   geom_hline(yintercept = as.numeric(args[2]), color = "red", linewidth = 1) +
   theme_poster +
-  xlab("Position from the NIEB border") +
-  ylab("GC content")
+  xlab(NULL) +
+  ylab(NULL) +
+  ylim(0, 1)
   fam = str_replace(fam, "/", "_")
   ggsave(paste0(args[3], "/", fam, ".png"), height = 7, width = 7)
 }

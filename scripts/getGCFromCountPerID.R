@@ -8,25 +8,30 @@ data = read.delim(args[1],
                   header = FALSE,
                   col.names = c("id", "pos", "base", "strand", "count"))
 
-data$type = "nGC"
-data[data$base == "S", "type"] = "GC"
-data = data[, c("id", "pos", "strand", "type", "count")] # reorder cols
+print("restructuring data")
+agg_data = aggregate(data$count,
+                     by = list(data$id,
+                               data$pos,
+                               data$base),
+                     FUN = sum)
+colnames(agg_data) = c("te_name", "pos", "base", "count")
 
-print("Reshaping datafame")
-data_gc = reshape(data = data,
-                  idvar  = c("id", "pos", "strand"),
-                  v.names = "count",
-                  timevar = "type",
-                  direction = "wide")
-# colnames(data_gc) = c("id", "pos", "strand", "count_ngc", "count_gc")
-colnames(data_gc)[colnames(data_gc) == "count.GC"] = "count_gc"
-colnames(data_gc)[colnames(data_gc) == "count.nGC"] = "count_ngc"
+reshaped_data = reshape(data = agg_data,
+                        idvar = c("te_name", "pos"),
+                        v.names = "count",
+                        timevar = "base",
+                        direction = "wide")
+reshaped_data[is.na(reshaped_data$count.S), "count.S"] = 0
+reshaped_data[is.na(reshaped_data$count.W), "count.W"] = 0
 
-data_gc$total = rowSums(data_gc[, c("count_gc", "count_ngc")], na.rm = TRUE)
-data_gc$rate = data_gc$count_gc / data_gc$total
+reshaped_data$total = reshaped_data$count.S + reshaped_data$count.W
+reshaped_data$rel = reshaped_data$count.S /
+  reshaped_data$total
 
+head(reshaped_data)
+colnames(reshaped_data) = c("id", "pos", "count_gc", "count_ngc", "total", "rate")
 print("Writing dataframe")
-data_gc = data_gc[, c("id", "pos", "strand", "rate", "count_gc", "total")]
+data_gc = reshaped_data[, c("id", "pos", "rate", "count_gc", "total")]
 write.table(data_gc, args[2], row.names = FALSE,
             col.names = FALSE, sep = "\t",
             quote = FALSE)

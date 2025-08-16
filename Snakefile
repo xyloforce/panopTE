@@ -197,9 +197,9 @@ rule getPosCopySpecific:
 rule selectTEs:
     input:
         tes_copy = "data_{species}/pos_copy_specific_0_0.tsv",
-        tes_normal = "data_{species}/tes_full_fam.bed"
+        tes_normal = "data_{species}/tes_{aggstatus}.bed"
     output:
-        "data_{species}/tes_fp_full_fam.bed"
+        "data_{species}/tes_fp_{aggstatus}.bed"
     shadow: "shallow"
     shell:
         """
@@ -235,7 +235,6 @@ rule plotPos:
         directory("results_{species}/cov_{status_fam}_{intra}_{inter}"),
         "results_{species}/cov_{status_fam}_savestate_{intra}_{inter}.csv",
         "results_{species}/cov_{status_fam}_stats_{intra}_{inter}.csv"
-    threads: math.floor(workflow.cores / 3)
     shell:
         "Rscript scripts/plotPos.R {input} {output} {threads}"
 
@@ -274,7 +273,7 @@ rule count_gc_niebs_full:
     input:
         aoe = "data_{species}/{intra}_{inter}_niebs.aoe",
         genome = "data_{species}/genome.fa",
-        mask = "data_{species}/tes_fp_full_fam.bed"
+        mask = "data_{species}/tes_fp_{aggstatus}.bed"
     output:
         "data_{species}/bases_niebs_{aggstatus}_{intra}_{inter}.tsv"
     threads: min(workflow.cores, 5)

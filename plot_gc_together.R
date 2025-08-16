@@ -5,9 +5,10 @@ library(zoo)
 args = c("data_hg/gc_tes_full_fam_0_0.tsv", "data_pig/gc_tes_full_fam_0_0.tsv", "data_mus/gc_tes_full_fam_0_0.tsv", "data_danio/gc_tes_full_fam_0_0.tsv", "results_hg/savestate_nieb_on_te_full_fam.csv", "results_mus/savestate_nieb_on_te_full_fam.csv", "results_pig/savestate_nieb_on_te_full_fam.csv", "results_danio/savestate_nieb_on_te_full_fam.csv")
 
 source("~/setThemePoster.R")
+# theme_poster = theme_poster
 
 fix_gc = function(df) {
-  df = aggregate(df[, c("count_gc", "total")], by = list(df$te_name, df$pos), FUN = sum)
+  # df = aggregate(df[, c("count_gc", "total")], by = list(df$te_name, df$pos), FUN = sum)
   df$count_gc = rollapply(df$count_gc,
                           width = 10,
                           FUN = sum,
@@ -19,7 +20,7 @@ fix_gc = function(df) {
                        na.rm = TRUE,
                        fill = 0)
   df$value = df$count_gc / df$total
-  colnames(df) = c("te_name", "pos", "count_gc", "total", "value")
+  colnames(df) = c("te_name", "pos", "value", "count_gc", "total")
   return(df)
 }
 
@@ -28,9 +29,7 @@ col_file = c("te_name", "pos", "strand", "value", "count_gc", "total")
 tmp_gc = lapply(args[1:4], function(filename) {
   print(filename)
   tmp = read.delim(filename, header = F, col.names = col_file)
-  head(tmp)
   tmp = fix_gc(tmp)
-  head(tmp)
   species = str_match(filename, "data_(.*?)/")[, 2]
   tmp$species = species
   return(tmp)
@@ -57,6 +56,7 @@ data$species = factor(data$species, levels = c("hg", "pig", "mus", "danio"))
 # data = rbind(data1, data2, data3, data4)
 
 plot = ggplot(data = data[data$te_name == "L1" &
+                          data$species == "hg" &
                           data$pos %in% -6000:50, ],
               aes(x = pos, y = value)) +
   facet_grid(cols = vars(species),
@@ -66,11 +66,30 @@ plot = ggplot(data = data[data$te_name == "L1" &
                                              "mus" = "M. musculus",
                                              "pig" = "S. scrofa",
                                              "danio" = "D. rerio"))) +
-  geom_point() +
+  geom_line(size = 1) +
   theme_poster +
   xlab("Position from the TE border") +
-  ylab("Relative coverage") + labs(color = "Type")
-ggsave("plot_gc_L1.png", width = 16, height = 5)
+  ylab("Relative coverage | GC content") + labs(color = "Type") +
+  theme(element_text(size = 20))
+ggsave("plot_gc_L1_hg.png", width = 16, height = 5)
+
+plot = ggplot(data = data[data$te_name == "L1" &
+                          data$species %in% c("mus", "pig") &
+                          data$pos %in% -1000:50, ],
+              aes(x = pos, y = value)) +
+  facet_grid(cols = vars(species),
+             rows = vars(type),
+             scales = "free_y",
+             labeller = labeller(species = c("hg" = "H. sapiens",
+                                             "mus" = "M. musculus",
+                                             "pig" = "S. scrofa",
+                                             "danio" = "D. rerio"))) +
+  geom_line(size = 1) +
+  theme_poster +
+  xlab("Position from the TE border") +
+  ylab("Relative coverage | GC content") + labs(color = "Type") +
+  theme(element_text(size = 20))
+ggsave("plot_gc_L1_mus_pg.png", width = 10, height = 5)
 
 plot = ggplot(data = data[(data$te_name == "Alu" |
                            data$te_name == "tRNA") &
@@ -83,10 +102,11 @@ plot = ggplot(data = data[(data$te_name == "Alu" |
                                              "mus" = "M. musculus",
                                              "pig" = "S. scrofa",
                                              "danio" = "D. rerio"))) +
-  geom_point() +
+  geom_line(size = 1) +
   theme_poster +
   xlab("Position from the TE border") +
-  ylab("Relative coverage") + labs(color = "Type")
+  ylab("Relative coverage | GC content") + labs(color = "Type") +
+  theme(element_text(size = 20))
 ggsave("plot_gc_Alu.png", width = 16, height = 5)
 
 plot = ggplot(data = data[data$te_name == "hAT-Charlie" &
@@ -99,10 +119,11 @@ plot = ggplot(data = data[data$te_name == "hAT-Charlie" &
                                              "mus" = "M. musculus",
                                              "pig" = "S. scrofa",
                                              "danio" = "D. rerio"))) +
-  geom_point() +
+  geom_line(size = 1) +
   theme_poster +
   xlab("Position from the TE border") +
-  ylab("Relative coverage") + labs(color = "Type")
+  ylab("Relative coverage | GC content") + labs(color = "Type") +
+  theme(element_text(size = 20))
 ggsave("plot_gc_DNA.png", width = 16, height = 5)
 
 plot = ggplot(data = data[data$te_name == "ERV1" &
@@ -115,8 +136,9 @@ plot = ggplot(data = data[data$te_name == "ERV1" &
                                              "mus" = "M. musculus",
                                              "pig" = "S. scrofa",
                                              "danio" = "D. rerio"))) +
-  geom_point() +
+  geom_line(size = 1) +
   theme_poster +
   xlab("Position from the TE border") +
-  ylab("Relative coverage") + labs(color = "Type")
+  ylab("Relative coverage | GC content") + labs(color = "Type") +
+  theme(element_text(size = 20))
 ggsave("plot_gc_ERV1.png", width = 16, height = 5)

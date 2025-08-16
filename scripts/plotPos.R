@@ -1,7 +1,5 @@
 library(ggplot2)
 library(stringr)
-library(doParallel)
-library(foreach)
 library(zoo)
 
 mean10pb = function(x, n = 10) {
@@ -11,7 +9,6 @@ mean10pb = function(x, n = 10) {
 
 args = commandArgs(trailingOnly = TRUE)
 
-registerDoParallel(cores = as.numeric(args[6]))
 source("~/setThemePoster.R")
 
 print("loading data")
@@ -45,7 +42,7 @@ selected_tes =
 head(selected_tes)
 
 print("cleaning the signal")
-result = foreach(name = selected_tes) %dopar% {
+result = lapply(selected_tes, function(name) {
   plus = agg_data[agg_data$type == name &
                   agg_data$strand == "+", ]
   tmp = data.frame(
@@ -74,7 +71,7 @@ result = foreach(name = selected_tes) %dopar% {
   minus = tmp
   minus$smooth = mean10pb(minus$value)
   return(rbind(plus, minus))
-}
+})
 
 result = do.call(rbind, result)
 ids = paste(result$type, result$strand)
@@ -122,6 +119,27 @@ for (type in unique(result$type)) {
       geom_vline(xintercept = c(0, 133, 266),
                  size = 1,
                  color = "darkred")
+    if (type == "Alu" || type == "tRNA") {
+      plot + ylim(NA, 25)
+    } else if (type == "MIR") {
+      plot + ylim(NA, 2.5)
+    } else if (type == "L1") {
+      plot + ylim(NA, 27)
+    } else if (type == "L2") {
+      plot + ylim(NA, 8)
+    } else if (type == "ERV1") {
+      plot + ylim(NA, 3.5)
+    } else if (type == "ERVL") {
+      plot + ylim(NA, 3)
+    } else if (type == "ERVL-MaLR") {
+      plot + ylim(NA, 5.5)
+    } else if (type == "hAT-Charlie") {
+      plot + ylim(NA, 7)
+    } else if (type == "hAT-Tip100") {
+      plot + ylim(NA, 3)
+    } else if (type == "TcMar-Tigger" || type == "TcMar") {
+      plot + ylim(NA, 11)
+    }
     type = str_replace(type, "/", "_")
     ggsave(paste0(args[3], "/", type, ".png"), height = 7, width = 7)
   } # remove all single repeats that are SOOOO NUMEROUS

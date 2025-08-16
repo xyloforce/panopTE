@@ -64,17 +64,17 @@ data = rbind(tmp_equilibrium[, c("species", "id", "type", "pos", "mean")],
 data$mean = as.numeric(data$mean)
 data$species = factor(data$species, levels = c("hg", "pig", "mus", "danio"))
 
-plot = ggplot(data[data$id %in% c("Alu", "tRNA") & data$pos %in% -300:100, ], aes(x = pos, y = mean)) + geom_point() + facet_grid(cols = vars(species), rows = vars(type), labeller = labeller(species = c("hg" = "H. sapiens", "mus" = "M. musculus", "pig" = "S. scrofa", "danio" = "D. rerio")), scales = "free_y") + theme_poster + xlab("Position from the TE 3' border") + ylab("Mean")
+plot = ggplot(data[data$id %in% c("Alu", "tRNA") & data$pos %in% -300:100, ], aes(x = pos, y = mean)) + geom_line(size = 1) + facet_grid(cols = vars(species), rows = vars(type), labeller = labeller(species = c("hg" = "H. sapiens", "mus" = "M. musculus", "pig" = "S. scrofa", "danio" = "D. rerio")), scales = "free_y") + theme_poster + xlab("Position from the TE 3' border") + ylab("Mean")
 ggsave("equilibrium_nieb_Alu_pretty_loveit_yeah.png", width = 16, height = 5)
 
-plot = ggplot(data[data$id == "L1" & data$pos %in% -6000:100 & data$species == "hg", ], aes(x = pos, y = mean)) + geom_point() + facet_grid(cols = vars(species), rows = vars(type), , labeller = labeller(species = c("hg" = "H. sapiens", "mus" = "M. musculus", "pig" = "S. scrofa", "danio" = "D. rerio")), scales = "free_y") + theme_poster + xlab("Position from the TE 3' border") + ylab("Mean")
+plot = ggplot(data[data$id == "L1" & data$pos %in% -6000:100 & data$species == "hg", ], aes(x = pos, y = mean)) + geom_line(size = 1) + facet_grid(cols = vars(species), rows = vars(type), , labeller = labeller(species = c("hg" = "H. sapiens", "mus" = "M. musculus", "pig" = "S. scrofa", "danio" = "D. rerio")), scales = "free_y") + theme_poster + xlab("Position from the TE 3' border") + ylab("Mean")
 ggsave("equilibrium_nieb_L1_hg_pretty_loveit_yeah.png", width = 16, height = 5)
 
-plot = ggplot(data[data$id == "L1" & data$pos %in% -1000:100 & data$species %in% c("pig", "mus"), ], aes(x = pos, y = mean)) + geom_point() + facet_grid(cols = vars(species), rows = vars(type), , labeller = labeller(species = c("hg" = "H. sapiens", "mus" = "M. musculus", "pig" = "S. scrofa", "danio" = "D. rerio")), scales = "free_y") + theme_poster + xlab("Position from the TE 3' border") + ylab("Mean")
+plot = ggplot(data[data$id == "L1" & data$pos %in% -1000:100 & data$species %in% c("pig", "mus"), ], aes(x = pos, y = mean)) + geom_line(size = 1) + facet_grid(cols = vars(species), rows = vars(type), , labeller = labeller(species = c("hg" = "H. sapiens", "mus" = "M. musculus", "pig" = "S. scrofa", "danio" = "D. rerio")), scales = "free_y") + theme_poster + xlab("Position from the TE 3' border") + ylab("Mean")
 ggsave("equilibrium_nieb_L1_ms_pretty_loveit_yeah.png", width = 16, height = 5)
 
-plot = ggplot(data[data$id == "ERV1" & data$pos %in% -300:100, ], aes(x = pos, y = mean)) + geom_point() + facet_grid(cols = vars(species), rows = vars(type), , labeller = labeller(species = c("hg" = "H. sapiens", "mus" = "M. musculus", "pig" = "S. scrofa", "danio" = "D. rerio")), scales = "free_y") + theme_poster + xlab("Position from the TE 3' border") + ylab("Mean")
+plot = ggplot(data[data$id == "ERV1" & data$pos %in% -300:100, ], aes(x = pos, y = mean)) + geom_line(size = 1) + facet_grid(cols = vars(species), rows = vars(type), , labeller = labeller(species = c("hg" = "H. sapiens", "mus" = "M. musculus", "pig" = "S. scrofa", "danio" = "D. rerio")), scales = "free_y") + theme_poster + xlab("Position from the TE 3' border") + ylab("Mean")
 ggsave("equilibrium_nieb_ERV1_pretty_loveit_yeah.png", width = 16, height = 5)
 
-plot = ggplot(data[data$id == "hAT-Charlie" & data$pos %in% -600:100, ], aes(x = pos, y = mean)) + geom_point() + facet_grid(cols = vars(species), rows = vars(type), , labeller = labeller(species = c("hg" = "H. sapiens", "mus" = "M. musculus", "pig" = "S. scrofa", "danio" = "D. rerio")), scales = "free_y") + theme_poster + xlab("Position from the TE 3' border") + ylab("Mean")
+plot = ggplot(data[data$id == "hAT-Charlie" & data$pos %in% -600:100, ], aes(x = pos, y = mean)) + geom_line(size = 1) + facet_grid(cols = vars(species), rows = vars(type), , labeller = labeller(species = c("hg" = "H. sapiens", "mus" = "M. musculus", "pig" = "S. scrofa", "danio" = "D. rerio")), scales = "free_y") + theme_poster + xlab("Position from the TE 3' border") + ylab("Mean")
 ggsave("equilibrium_nieb_hAT-Charlie_pretty_loveit_yeah.png", width = 16, height = 5)
